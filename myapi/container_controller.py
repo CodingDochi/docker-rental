@@ -30,6 +30,23 @@ async def list_saved_servers():
     return {"saved_servers": saved_servers}
 
 # 어드민이 서버 생성 (사용자 요청 승인)
+# @container_router.post("/approve_rent/{server_mongo_id}")
+# async def approve_rent(server_mongo_id: str):
+#     server_mongo_id = server_mongo_id.strip()
+#     request_doc = await server_collection.find_one({"_id": ObjectId(server_mongo_id)})
+#     if not request_doc or request_doc["status"] != "pending":
+#         raise HTTPException(status_code=404, detail="Pending server request not found")
+
+#     try:
+#         container = client.containers.run(request_doc["image"], detach=True)
+#         container_id = container.id  # 생성된 컨테이너의 ID 가져오기
+#         await server_collection.update_one(
+#             {"_id": ObjectId(server_mongo_id)},
+#             {"$set": {"server_mongo_id": container_id, "status": "active", "updated_at": datetime.datetime.utcnow()}}
+#         )
+#         return {"success": True, "message": f"Server {container_id} created for {request_doc['user_id']}"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Server creation failed: {str(e)}")
 @container_router.post("/approve_rent/{server_mongo_id}")
 async def approve_rent(server_mongo_id: str):
     server_mongo_id = server_mongo_id.strip()
@@ -39,19 +56,47 @@ async def approve_rent(server_mongo_id: str):
 
     try:
         container = client.containers.run(request_doc["image"], detach=True)
+        container_id = container.id  # Docker 컨테이너의 실제 ID
+        
+        # MongoDB에 container_id 추가하여 저장
         await server_collection.update_one(
             {"_id": ObjectId(server_mongo_id)},
-            {"$set": {"server_mongo_id": container_id, "status": "active", "updated_at": datetime.datetime.utcnow()}}
+            {"$set": {"container_id": container_id, "status": "active", "updated_at": datetime.datetime.utcnow()}}
         )
+        
         return {"success": True, "message": f"Server {container_id} created for {request_doc['user_id']}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server creation failed: {str(e)}")
 
 # 어드민이 저장된 서버 복원 (사용자가 요청)
-@container_router.post("/restore_saved_server/{server_mongo_id}")
-async def restore_saved_server(server_mongo_id: str):
-    # 서버 복원 로직 구현
-    pass
+@container_router.post("/restore_saved_server/{container_id}")
+async def restore_saved_server(container_id: str):
+    # MongoDB에서 container_id로 서버 문서 찾기
+    server_doc = await server_collection.find_one({"container_id": container_id, "status": "saved"})
+    
+    if not server_doc:
+        raise HTTPException(status_code=404, detail="Saved server not found")
+    
+    try:
+        # Docker에서 중지된 컨테이너를 가져옴
+        container = client.containers.get(container_id)
+        
+        # 컨테이너를 다시 시작함
+        container.start()
+        
+        # MongoDB에서 서버 상태를 업데이트
+        await server_collection.update_one(
+            {"container_id": container_id},
+            {"$set": {"status": "active", "updated_at": datetime.datetime.utcnow()}}
+        )
+        
+        return {"success": True, "message": f"Server {container_id} has been restored and is now active."}
+    
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail="Container not found")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restore the server: {str(e)}")
 
 # 어드민이 서버 요청 거절
 @container_router.post("/reject_rent/{server_mongo_id}")
