@@ -66,24 +66,6 @@ async def request_rent_server(user_id: str, image: str):
 
 
 # 사용자가 자신의 서버 목록을 조회
-# @user_router.get("/my_servers/{user_id}")
-# async def get_user_servers(user_id: str):
-#     # 모든 상태의 서버를 조회 (pending, active, saved)
-#     user_servers = await server_collection.find({
-#         "user_id": user_id,
-#         "status": {"$in": ["pending", "active", "saved"]}
-#     }).to_list(100)
-
-#     if not user_servers:
-#         raise HTTPException(status_code=404, detail="No servers found for this user")
-
-#     # ObjectId를 문자열로 변환
-#     for server in user_servers:
-#         server["_id"] = str(server["_id"])  # ObjectId를 문자열로 변환
-    
-#     return {"servers": user_servers}
-
-# 사용자가 자신의 서버 목록을 조회
 @user_router.get("/my_servers/{user_id}")
 async def get_user_servers(user_id: str):
     # 모든 상태의 서버를 조회 (pending, active, saved)
@@ -106,16 +88,6 @@ async def get_user_servers(user_id: str):
     return {"servers": user_servers}
 
 
-# 서버 저장
-# @user_router.post("/save_server")
-# async def save_server(server_mongo_id: str):
-#     container = client.containers.get(server_mongo_id)
-#     container.stop()
-#     await server_collection.update_one(
-#         {"server_mongo_id": server_mongo_id},
-#         {"$set": {"status": "saved", "updated_at": datetime.datetime.utcnow()}}
-#     )
-#     return {"success": True, "message": "Server saved."}
 # 서버 저장
 @user_router.post("/save_server")
 async def save_server(container_id: str):

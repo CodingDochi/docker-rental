@@ -30,23 +30,6 @@ async def list_saved_servers():
     return {"saved_servers": saved_servers}
 
 # 어드민이 서버 생성 (사용자 요청 승인)
-# @container_router.post("/approve_rent/{server_mongo_id}")
-# async def approve_rent(server_mongo_id: str):
-#     server_mongo_id = server_mongo_id.strip()
-#     request_doc = await server_collection.find_one({"_id": ObjectId(server_mongo_id)})
-#     if not request_doc or request_doc["status"] != "pending":
-#         raise HTTPException(status_code=404, detail="Pending server request not found")
-
-#     try:
-#         container = client.containers.run(request_doc["image"], detach=True)
-#         container_id = container.id  # 생성된 컨테이너의 ID 가져오기
-#         await server_collection.update_one(
-#             {"_id": ObjectId(server_mongo_id)},
-#             {"$set": {"server_mongo_id": container_id, "status": "active", "updated_at": datetime.datetime.utcnow()}}
-#         )
-#         return {"success": True, "message": f"Server {container_id} created for {request_doc['user_id']}"}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Server creation failed: {str(e)}")
 @container_router.post("/approve_rent/{server_mongo_id}")
 async def approve_rent(server_mongo_id: str):
     server_mongo_id = server_mongo_id.strip()
